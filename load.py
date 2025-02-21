@@ -272,8 +272,8 @@ def handle_bgmi(message):
         bot.reply_to(message, f"⚠️ Your maximum allowed attack duration is {attack_limits[caller_id]} seconds.")
         return
     current_active = [attack for attack in active_attacks if attack['end_time'] > datetime.datetime.now()]
-    if len(current_active) >= 2:
-        bot.reply_to(message, "🚨 Maximum of 2 concurrent attack allowed. Please wait for the current attack to finish before launching a new one.")
+    if len(current_active) >= 1:
+        bot.reply_to(message, "🚨 Maximum of 1 concurrent attack allowed. Please wait for the current attack to finish before launching a new one.")
         return
     attack_end_time = datetime.datetime.now() + datetime.timedelta(seconds=duration)
     attack_info = {'user_id': caller_id, 'target': target, 'port': port, 'end_time': attack_end_time}
