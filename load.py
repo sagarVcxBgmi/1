@@ -4,6 +4,7 @@ import os
 import time
 import logging
 import re
+from collections import defaultdict
 import subprocess
 from threading import Timer, Lock
 import json
@@ -11,7 +12,6 @@ import atexit
 import asyncio
 import threading
 import math
-from collections import defaultdict
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -21,36 +21,7 @@ MAX_ATTACK_DURATION = 240
 USER_ACCESS_FILE = "user_access.txt"
 ATTACK_LOG_FILE = "attack_log.txt"
 OWNER_ID = "6442837812"
-
-# -------------------------
-# Admin Management
-# -------------------------
-ADMIN_FILE = "admins.txt"
-admin_ids = []  # List of admin user IDs (as strings)
-
-def load_admins():
-    global admin_ids
-    try:
-        with open(ADMIN_FILE, "r") as f:
-            admin_ids = [line.strip() for line in f if line.strip()]
-    except FileNotFoundError:
-        admin_ids = []
-
-def save_admins():
-    with open(ADMIN_FILE, "w") as f:
-        for admin in admin_ids:
-            f.write(f"{admin}\n")
-
-# Load admins at startup
-load_admins()
-
-def is_owner_or_admin(user_id):
-    return (str(user_id) == OWNER_ID) or (str(user_id) in admin_ids)
-
-# -------------------------
-# Bot Initialization
-# -------------------------
-bot = telebot.TeleBot('7447444149:AAHkL5Ek9P9E209vS95AFsz1SyegQivjzic')
+bot = telebot.TeleBot('7674857613:AAEpC3RZXZJRVuI4z4NbR08v80HlAPiA7A0')
 
 # Auto-convert backup file on first run
 if not os.path.exists(USER_ACCESS_FILE) and os.path.exists("user_access_backup.txt"):
@@ -86,9 +57,9 @@ def load_user_access():
         logging.error(f"Error loading user access: {e}")
         return {}
 
-# -------------------------
+# ----------------------
 # Data Persistence Setup
-# -------------------------
+# ----------------------
 attack_limits = {}
 user_cooldowns = {}
 active_attacks = []
@@ -115,18 +86,18 @@ def load_persistent_data():
 
 atexit.register(save_persistent_data)
 
-# -------------------------
+# ----------------------
 # Define send_final_message
-# -------------------------
+# ----------------------
 def send_final_message(attack):
     with attacks_lock:
         if attack in active_attacks:
             active_attacks.remove(attack)
     save_active_attacks()
 
-# -------------------------
+# ----------------------
 # Attack Persistence
-# -------------------------
+# ----------------------
 def load_active_attacks():
     global active_attacks
     try:
@@ -154,9 +125,9 @@ def save_active_attacks():
     with open('active_attacks.json', 'w') as f:
         json.dump(attacks_to_save, f)
 
-# -------------------------
+# ----------------------
 # Asynchronous Event Loop Setup
-# -------------------------
+# ----------------------
 async_loop = asyncio.new_event_loop()
 def start_async_loop(loop):
     asyncio.set_event_loop(loop)
@@ -164,9 +135,9 @@ def start_async_loop(loop):
 
 threading.Thread(target=start_async_loop, args=(async_loop,), daemon=True).start()
 
-# -------------------------
+# ----------------------
 # Helper Functions
-# -------------------------
+# ----------------------
 def save_user_access():
     temp_file = f"{USER_ACCESS_FILE}.tmp"
     try:
@@ -371,16 +342,14 @@ def help_command(message):
 - <b>/help</b> - 📖 Discover all the amazing things this bot can do for you!
 - <b>/bgmi &lt;target&gt; &lt;port&gt; &lt;duration&gt;</b> - ⚡ Launch an attack.
 - <b>/when</b> - ⏳ Check the remaining time for current attacks.
-- <b>/grant &lt;user_id&gt; &lt;duration&gt;</b> - Grant user access (Owner/Admin only). (Use "1d" for 1 day or "12h" for 12 hours)
-- <b>/revoke &lt;user_id&gt;</b> - Revoke user access (Owner/Admin only).
-- <b>/attack_limit &lt;user_id&gt; &lt;max_duration&gt;</b> - Set max attack duration (Owner/Admin only).
-- <b>/list_users</b> - List all users with access (Owner/Admin only).
-- <b>/backup</b> - Backup user access data (Owner/Admin only).
-- <b>/download_backup</b> - Download user data (Owner/Admin only).
-- <b>/set_cooldown &lt;user_id&gt; &lt;minutes&gt;</b> - Set a user's cooldown time in minutes (minimum 1 minute, Owner/Admin only).
+- <b>/grant &lt;user_id&gt; &lt;duration&gt;</b> - Grant user access (Owner only). (Use "1d" for 1 day or "12h" for 12 hours)
+- <b>/revoke &lt;user_id&gt;</b> - Revoke user access (Owner only).
+- <b>/attack_limit &lt;user_id&gt; &lt;max_duration&gt;</b> - Set max attack duration (Owner only).
 - <b>/status</b> - Check your subscription status.
-- <b>/addadmin &lt;user_id&gt;</b> - Add a new admin (Owner only).
-- <b>/removeadmin &lt;user_id&gt;</b> - Remove an admin (Owner only).
+- <b>/list_users</b> - List all users with access (Owner only).
+- <b>/backup</b> - Backup user access data (Owner only).
+- <b>/download_backup</b> - Download user data (Owner only).
+- <b>/set_cooldown &lt;user_id&gt; &lt;minutes&gt;</b> - Set a user's cooldown time in minutes (minimum 1 minute, Owner only).
 
 📋 <b>Usage Notes:</b>
 - Replace <i>&lt;user_id&gt;</i>, <i>&lt;target&gt;</i>, <i>&lt;port&gt;</i>, <i>&lt;duration&gt;</i>, and <i>&lt;minutes&gt;</i> with the appropriate values.
@@ -392,61 +361,11 @@ def help_command(message):
         logging.error(f"Telegram API error: {e}")
         bot.reply_to(message, "🚨 An error occurred while processing your request. Please try again later.")
 
-# -------------------------
-# Admin Management Commands
-# -------------------------
-@bot.message_handler(commands=['addadmin'])
-def add_admin(message):
-    caller = str(message.from_user.id)
-    # Only the owner can add admins
-    if caller != OWNER_ID:
-        bot.reply_to(message, "❌ You are not authorized to use this command.")
-        return
-
-    command = message.text.split()
-    if len(command) != 2:
-        bot.reply_to(message, "Invalid format! Use: `/addadmin <user_id>`", parse_mode='Markdown')
-        return
-
-    new_admin = command[1]
-    if new_admin in admin_ids:
-        bot.reply_to(message, f"User {new_admin} is already an admin.")
-        return
-
-    admin_ids.append(new_admin)
-    save_admins()
-    bot.reply_to(message, f"✅ User {new_admin} has been added as an admin.")
-
-@bot.message_handler(commands=['removeadmin'])
-def remove_admin(message):
-    caller = str(message.from_user.id)
-    # Only the owner can remove admins
-    if caller != OWNER_ID:
-        bot.reply_to(message, "❌ You are not authorized to use this command.")
-        return
-
-    command = message.text.split()
-    if len(command) != 2:
-        bot.reply_to(message, "Invalid format! Use: `/removeadmin <user_id>`", parse_mode='Markdown')
-        return
-
-    remove_id = command[1]
-    if remove_id not in admin_ids:
-        bot.reply_to(message, f"User {remove_id} is not an admin.")
-        return
-
-    admin_ids.remove(remove_id)
-    save_admins()
-    bot.reply_to(message, f"✅ User {remove_id} has been removed from admin.")
-
-# -------------------------
-# Owner/Admin Commands
-# -------------------------
 @bot.message_handler(commands=['grant'])
 def grant_command(message):
     logging.info("Grant command received")
     caller = str(message.from_user.id)
-    if not is_owner_or_admin(caller):
+    if caller != OWNER_ID:
         reply = bot.reply_to(message, "❌ You are not authorized to use this command.")
         Timer(10, lambda: bot.delete_message(reply.chat.id, reply.message_id)).start()
         return
@@ -485,7 +404,7 @@ def grant_command(message):
 def revoke_command(message):
     logging.info("Revoke command received")
     caller = str(message.from_user.id)
-    if not is_owner_or_admin(caller):
+    if caller != OWNER_ID:
         reply = bot.reply_to(message, "❌ You are not authorized to use this command.")
         Timer(10, lambda: bot.delete_message(reply.chat.id, reply.message_id)).start()
         return
@@ -508,7 +427,7 @@ def revoke_command(message):
 def attack_limit_command(message):
     logging.info("Attack limit command received")
     caller = str(message.from_user.id)
-    if not is_owner_or_admin(caller):
+    if caller != OWNER_ID:
         bot.reply_to(message, "❌ You are not authorized to use this command.")
         return
     command = message.text.split()
@@ -524,7 +443,7 @@ def attack_limit_command(message):
 def list_users_command(message):
     logging.info("List users command received")
     caller = str(message.from_user.id)
-    if not is_owner_or_admin(caller):
+    if caller != OWNER_ID:
         bot.reply_to(message, "❌ You are not authorized to use this command.")
         return
     now = datetime.datetime.now()
@@ -553,7 +472,7 @@ def list_users_command(message):
 @bot.message_handler(commands=['backup'])
 def backup_command(message):
     logging.info("Backup command received")
-    if not is_owner_or_admin(str(message.from_user.id)):
+    if str(message.from_user.id) != OWNER_ID:
         bot.reply_to(message, "❌ You are not authorized to use this command.")
         return
     with open("user_access_backup.txt", "w") as backup_file:
@@ -569,7 +488,7 @@ def backup_command(message):
     
 @bot.message_handler(commands=['download_backup'])
 def download_backup(message):
-    if not is_owner_or_admin(str(message.from_user.id)):
+    if str(message.from_user.id) != OWNER_ID:
         bot.reply_to(message, "❌ You are not authorized to use this command.")
         return
     with open("user_access_backup.txt", "rb") as backup_file:
@@ -578,7 +497,7 @@ def download_backup(message):
 @bot.message_handler(commands=['set_cooldown'])
 def set_cooldown_command(message):
     logging.info("Set cooldown command received")
-    if not is_owner_or_admin(str(message.from_user.id)):
+    if str(message.from_user.id) != OWNER_ID:
         bot.reply_to(message, "❌ You are not authorized to use this command.")
         return
     command = message.text.split()
