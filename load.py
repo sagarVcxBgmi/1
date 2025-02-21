@@ -237,7 +237,7 @@ def start_command(message):
 
 🚀 Use <b>/help</b> to see the available commands and get started!
 
-🛡️ For assistance, contact <a href="tg://user?id=1148287810">@wtf_vai</a>
+🛡️ For assistance, contact <a href="tg://user?id=1148287810">@its_darinda</a>
 
 <b>Note:</b> Unauthorized access is prohibited. Contact an admin if you need access.
     """
